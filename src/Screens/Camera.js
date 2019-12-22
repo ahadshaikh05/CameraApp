@@ -13,6 +13,13 @@ import RNFS from 'react-native-fs';
 import moment from 'moment';
 
 export default class Camera extends Component {
+  state = {
+    currentImage: null,
+    token: this.props.navigation.getParam('token'),
+  };
+  componentDidMount = () => {
+    alert(this.state.token);
+  };
   render() {
     return (
       <View style={styles.container}>
@@ -37,16 +44,11 @@ export default class Camera extends Component {
           }}
         />
         <TouchableOpacity
-          onPress={() => this.props.navigation.navigate('Gallery')}
-          style={{position: 'absolute', bottom: 25, left: 25}}>
-          <Text
-            style={{
-              color: '#fff',
-              fontSize: 20,
-              fontWeight: 'bold',
-            }}>
-            Gallery
-          </Text>
+          onPress={() =>
+            this.props.navigation.navigate('Gallery', {token: this.state.token})
+          }
+          style={styles.gallery}>
+          <Image style={{flex: 1}} source={{uri: this.state.currentImage}} />
         </TouchableOpacity>
         <View
           style={{
@@ -74,7 +76,7 @@ export default class Camera extends Component {
     if (this.camera) {
       const options = {quality: 0.5, base64: true};
       const data = await this.camera.takePictureAsync(options);
-      console.log(data.uri);
+      this.setState({currentImage: 'file://' + data.uri});
       this.moveFileToDest(data.uri);
     }
   };
@@ -139,5 +141,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 30,
     padding: 15,
+  },
+  gallery: {
+    position: 'absolute',
+    bottom: 10,
+    left: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 35,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+    elevation: 10,
   },
 });

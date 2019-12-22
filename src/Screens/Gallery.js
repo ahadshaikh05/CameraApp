@@ -13,11 +13,22 @@ import {dirPicutures} from '../util/DirStorage';
 import RNFS from 'react-native-fs';
 import Images from '../components/Images/Images';
 
+import GDrive from 'react-native-google-drive-api-wrapper';
+
 export default class Gallery extends Component {
   state = {
     images: [],
+    token: this.props.navigation.getParam('token'),
   };
   componentDidMount = () => {
+    console.log(GDrive.isInitialized());
+    GDrive.files
+      .safeCreateFolder({
+        name: 'CameraApp Pictures',
+        parents: ['root'],
+      })
+      .then(res => console.log('createFolder success', res))
+      .catch(error => console.log('createFolder failure', error));
     this.getPictures();
   };
   getPictures = async () => {
@@ -35,6 +46,7 @@ export default class Gallery extends Component {
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         RNFS.readDir(dirPicutures)
           .then(res => {
+            console.log(res);
             this.setState({
               images: res,
             });
@@ -49,35 +61,65 @@ export default class Gallery extends Component {
       console.warn(err);
     }
   };
+  sync = () => {
+    let images = this.state.images;
+    if (images.length > 0) {
+      for (let i = 0; i < images.length; i++) {
+        RNFS.readFile('file://' + images[i].path, 'base64')
+          .then(res => {
+            this.upload(res, images[i].name);
+          })
+          .catch(error => console.log(error));
+      }
+    }
+  };
+  upload = (image, name) => {
+    GDrive.files
+      .createFileMultipart(
+        image,
+        "'image/jpg'",
+        {
+          parents: ['root'],
+          name: name,
+        },
+        true,
+      )
+      .then(res => {
+        console.log('upload success', res);
+      })
+      .catch(error => console.log('upload error', error));
+  };
   render() {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => this.props.navigation.goBack()}>
-            <Image
-              style={{height: 25, width: 25}}
-              source={require('../assets/back.png')}
-            />
-          </TouchableOpacity>
-          <View>
-            <TouchableOpacity>
+      <SafeAreaView style={{flex: 1}}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => this.props.navigation.goBack()}>
               <Image
-                style={{height: 30, width: 30}}
-                source={require('../assets/sync.png')}
+                style={{height: 25, width: 25}}
+                source={require('../assets/back.png')}
               />
             </TouchableOpacity>
+            <View>
+              <TouchableOpacity onPress={this.sync}>
+                <Image
+                  style={{height: 30, width: 30}}
+                  source={require('../assets/sync.png')}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        <ScrollView>
-          <Images
-            navigate={uri => {
-              this.props.navigation.navigate('FullImage', {uri: uri});
-            }}
-            images={this.state.images}
-          />
-        </ScrollView>
-      </View>
+          <ScrollView>
+            <Images
+              navigate={uri => {
+                this.props.navigation.navigate('FullImage', {uri: uri});
+              }}
+              images={this.state.images}
+            />
+          </ScrollView>
+        </View>
+      </SafeAreaView>
     );
   }
 }

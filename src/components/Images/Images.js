@@ -1,26 +1,25 @@
 import React from 'react';
-import {StyleSheet, View, Text, ScrollView} from 'react-native';
+import {StyleSheet, View, Text} from 'react-native';
 
 import Image from './Image';
 
 const Images = props => {
   let images = props.images;
-  console.log('images', images);
   let sortedImages = [];
-  for (let i = 0; i < images.length; i++) {
-    let hourNumber = new Date(images[i].mtime).getHours();
+  for (let i = images.length; i > 0; i--) {
+    let hourNumber = new Date(images[i - 1].mtime).getHours();
     let hourPresent = false;
     if (sortedImages.length == 0) {
       let hour = {
         id: hourNumber,
         time: `${hourNumber}:00 Hrs`,
-        images: [images[i].path],
+        images: [images[i - 1].path],
       };
       sortedImages.push(hour);
     } else {
       sortedImages.map(element => {
         if (hourNumber == element.id) {
-          element.images.push(images[i].path);
+          element.images.push(images[i - 1].path);
           hourPresent = true;
         } else {
           hourPresent = false;
@@ -30,13 +29,12 @@ const Images = props => {
         let hour = {
           id: hourNumber,
           time: `${hourNumber}:00 Hrs`,
-          images: [images[i].path],
+          images: [images[i - 1].path],
         };
         sortedImages.push(hour);
       }
     }
   }
-  console.log('sortedImages', sortedImages);
   return (
     <View>
       {sortedImages.map((hour, index) => {
@@ -48,7 +46,6 @@ const Images = props => {
             </View>
             <View style={styles.imagesContainer}>
               {hourImages.map((image, index) => {
-                console.log('hour image', image);
                 return (
                   <Image
                     navigate={() => props.navigate('file://' + image)}
