@@ -17,9 +17,9 @@ export default class Camera extends Component {
     currentImage: null,
     token: this.props.navigation.getParam('token'),
   };
-  componentDidMount = () => {
-    alert(this.state.token);
-  };
+  // componentDidMount = () => {
+  //   alert(this.state.token);
+  // };
   render() {
     return (
       <View style={styles.container}>
@@ -103,7 +103,6 @@ export default class Camera extends Component {
         },
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log('You can use the camera');
         RNFS.mkdir(dirPicutures)
           .then(() => {
             RNFS.moveFile(srcPath, desPath)

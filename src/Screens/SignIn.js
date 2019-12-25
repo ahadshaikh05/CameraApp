@@ -8,17 +8,14 @@ export default class SignIn extends Component {
   signIn = async () => {
     await GoogleSignIn.configure({
       clientID:
-        '630434030114-tcr3s3ncdu07hau2rhkn74j7pqno6ess.apps.googleusercontent.com',
+        '611971155839-1ddq09l5v2l7mm8pisbsdcd3iec925bl.apps.googleusercontent.com',
       scopes: [
         'openid',
-        'email',
-        'profile',
-        'https://www.googleapis.com/auth/drive.appfolder',
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
         'https://www.googleapis.com/auth/drive.metadata',
+        'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/drive.appdata',
-        'https://www.googleapis.com/auth/drive.activity',
       ],
       shouldFetchBasicProfile: true,
     });
@@ -46,7 +43,13 @@ export default class SignIn extends Component {
       await AsyncStorage.setItem('offlineData', JSON.stringify(offlineData));
       console.log(token);
       GDrive.setAccessToken(token);
-      GDrive.init();
+      const params = {
+        files: {
+          boundary: 'one_two', // The boundary string for multipart file uploads. Default: "foo_bar_baz".
+        },
+      };
+
+      GDrive.init(params);
       this.props.navigation.replace('Camera', {token: token});
     } catch (error) {
       alert(error);

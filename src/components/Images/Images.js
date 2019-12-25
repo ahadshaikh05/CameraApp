@@ -10,31 +10,44 @@ const Images = props => {
     let hourNumber = new Date(images[i - 1].mtime).getHours();
     let hourPresent = false;
     if (sortedImages.length == 0) {
+      let imageWithUpStatus = {
+        image: images[i - 1].path,
+        uploaded: images[i - 1].uploaded,
+      };
       let hour = {
         id: hourNumber,
         time: `${hourNumber}:00 Hrs`,
-        images: [images[i - 1].path],
+        images: [imageWithUpStatus],
       };
       sortedImages.push(hour);
     } else {
       sortedImages.map(element => {
+        let imageWithUpStatus = {
+          image: images[i - 1].path,
+          uploaded: images[i - 1].uploaded,
+        };
         if (hourNumber == element.id) {
-          element.images.push(images[i - 1].path);
+          element.images.push(imageWithUpStatus);
           hourPresent = true;
         } else {
           hourPresent = false;
         }
       });
       if (hourPresent == false) {
+        let imageWithUpStatus = {
+          image: images[i - 1].path,
+          uploaded: images[i - 1].uploaded,
+        };
         let hour = {
           id: hourNumber,
           time: `${hourNumber}:00 Hrs`,
-          images: [images[i - 1].path],
+          images: [imageWithUpStatus],
         };
         sortedImages.push(hour);
       }
     }
   }
+  console.log('sorted', sortedImages);
   return (
     <View>
       {sortedImages.map((hour, index) => {
@@ -46,11 +59,13 @@ const Images = props => {
             </View>
             <View style={styles.imagesContainer}>
               {hourImages.map((image, index) => {
+                console.log('image', image);
                 return (
                   <Image
-                    navigate={() => props.navigate('file://' + image)}
+                    uploaded={image.uploaded}
+                    navigate={() => props.navigate('file://' + image.image)}
                     key={index}
-                    source={{uri: 'file://' + image}}
+                    source={{uri: 'file://' + image.image}}
                   />
                 );
               })}

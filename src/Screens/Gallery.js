@@ -8,12 +8,14 @@ import {
   ScrollView,
   TouchableOpacity,
   PermissionsAndroid,
+  Alert,
 } from 'react-native';
 import {dirPicutures} from '../util/DirStorage';
 import RNFS from 'react-native-fs';
 import Images from '../components/Images/Images';
 
 import GDrive from 'react-native-google-drive-api-wrapper';
+import AsyncStorage from '@react-native-community/async-storage';
 
 export default class Gallery extends Component {
   state = {
@@ -21,14 +23,17 @@ export default class Gallery extends Component {
     token: this.props.navigation.getParam('token'),
   };
   componentDidMount = () => {
-    console.log(GDrive.isInitialized());
-    GDrive.files
-      .safeCreateFolder({
-        name: 'CameraApp Pictures',
-        parents: ['root'],
-      })
-      .then(res => console.log('createFolder success', res))
-      .catch(error => console.log('createFolder failure', error));
+    //"/storage/emulated/0/CameraApp/Pictures/221219_1352754.jpg"
+
+    //console.log(GDrive.isInitialized());
+
+    // GDrive.files
+    //   .safeCreateFolder({
+    //     name: 'CameraApp_Pictures',
+    //     parents: ['CameraApp_Pictures'],
+    //   })
+    //   .then(res => console.log('createFolder success', res))
+    //   .catch(error => console.log('createFolder failure', error));
     this.getPictures();
   };
   getPictures = async () => {
@@ -46,9 +51,23 @@ export default class Gallery extends Component {
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         RNFS.readDir(dirPicutures)
           .then(res => {
-            console.log(res);
+            let images = [...res];
+            for (let i = 0; i < res.length; i++) {
+              images[i].uploaded = 'no';
+              // GDrive.files
+              //   .getId(images[i].path, 'root', 'image/jpeg', false)
+              //   .then(res => {
+              //     if (res) {
+              //       images[i].uploaded = 'yes';
+              //     } else {
+              //       images[i].uploaded = 'no';
+              //     }
+              //   })
+              //   .catch(err => console.log(err));
+            }
+            console.log('gallery mages', images);
             this.setState({
-              images: res,
+              images: images,
             });
           })
           .catch(error => {
@@ -62,22 +81,24 @@ export default class Gallery extends Component {
     }
   };
   sync = () => {
-    let images = this.state.images;
+    let images = [...this.state.images];
     if (images.length > 0) {
       for (let i = 0; i < images.length; i++) {
+        images[i].uploaded = 'uploading';
+        this.setState({images: images});
         RNFS.readFile('file://' + images[i].path, 'base64')
           .then(res => {
-            this.upload(res, images[i].name);
+            this.upload(res, images[i].name, images, i);
           })
           .catch(error => console.log(error));
       }
     }
   };
-  upload = (image, name) => {
+  upload = (image, name, images, i) => {
     GDrive.files
       .createFileMultipart(
         image,
-        "'image/jpg'",
+        'image/jpg',
         {
           parents: ['root'],
           name: name,
@@ -85,11 +106,30 @@ export default class Gallery extends Component {
         true,
       )
       .then(res => {
-        console.log('upload success', res);
+        if (res.status == 200) {
+          images[i].uploaded = 'yes';
+          this.setState({images: images}, console.log(this.state.images));
+          console.log('upload success', res);
+        } else {
+          Alert.alert(
+            'Token Expired',
+            'Your access token has expired. Please press OK to login again',
+            [{text: 'OK', onPress: () => this.navigateToLogin}],
+            {cancelable: false},
+          );
+        }
       })
-      .catch(error => console.log('upload error', error));
+      .catch(error => {
+        images[i].uploaded = 'no';
+        this.setState({images: images}, console.log(this.state.images));
+        console.log('upload error', error);
+      });
+  };
+  navigateToLogin = () => {
+    AsyncStorage.clear(() => this.props.navigation.navigate('SignIn'));
   };
   render() {
+    console.log('state imag', this.state.images);
     return (
       <SafeAreaView style={{flex: 1}}>
         <View style={styles.container}>

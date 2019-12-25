@@ -10,8 +10,15 @@ export default class SplashScreen extends Component {
       let offlineData = JSON.parse(receivedData);
       let token = offlineData.token;
       if (token !== null) {
+        console.log(token);
         GDrive.setAccessToken(token);
-        GDrive.init();
+        const params = {
+          files: {
+            boundary: 'one_two', // The boundary string for multipart file uploads. Default: "foo_bar_baz".
+          },
+        };
+
+        GDrive.init(params);
         this.props.navigation.replace('Camera', {token: token});
       } else {
         this.props.navigation.replace('SignIn');
