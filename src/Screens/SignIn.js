@@ -48,8 +48,16 @@ export default class SignIn extends Component {
           boundary: 'one_two', // The boundary string for multipart file uploads. Default: "foo_bar_baz".
         },
       };
-
       GDrive.init(params);
+      GDrive.files
+        .safeCreateFolder({
+          name: 'CameraApp_Pictures',
+          parents: ['root'],
+        })
+        .then(res => {
+          console.log('createFolder success', res);
+        })
+        .catch(error => console.log('createFolder failure', error));
       this.props.navigation.replace('Camera', {token: token});
     } catch (error) {
       alert(error);

@@ -16,25 +16,56 @@ import Images from '../components/Images/Images';
 
 import GDrive from 'react-native-google-drive-api-wrapper';
 import AsyncStorage from '@react-native-community/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-simple-toast';
 
 export default class Gallery extends Component {
   state = {
+    isConnected: null,
     images: [],
     token: this.props.navigation.getParam('token'),
+    folderId: null,
   };
   componentDidMount = () => {
-    //"/storage/emulated/0/CameraApp/Pictures/221219_1352754.jpg"
+    NetInfo.fetch().then(state => {
+      if (state.isConnected) {
+        this.getFolderId();
+      } else {
+        this.setState({isConnected: false}, this.getPictures);
+      }
+    });
+    this.netinfoUnsubscribe = NetInfo.addEventListener(
+      this.handleConnectivityChange,
+    );
+  };
 
-    //console.log(GDrive.isInitialized());
+  handleConnectivityChange = connection => {
+    console.log('iscon', connection.isConnected);
+    this.setState({isConnected: connection.isConnected}, this.getPictures);
+  };
 
-    // GDrive.files
-    //   .safeCreateFolder({
-    //     name: 'CameraApp_Pictures',
-    //     parents: ['CameraApp_Pictures'],
-    //   })
-    //   .then(res => console.log('createFolder success', res))
-    //   .catch(error => console.log('createFolder failure', error));
-    this.getPictures();
+  componentWillUnmount() {
+    if (this.netinfoUnsubscribe) {
+      this.netinfoUnsubscribe();
+      this.netinfoUnsubscribe = null;
+    }
+  }
+
+  getFolderId = async () => {
+    try {
+      let folderId = await GDrive.files.getId('CameraApp_Pictures', ['root']);
+      this.setState({isConnected: true, folderId: folderId}, this.getPictures);
+    } catch (error) {
+      if (error.status == 401) {
+        Alert.alert(
+          'Token Expired',
+          'Your access token has expired. Press OK to login again',
+          [{text: 'OK', onPress: this.navigateToLogin}],
+          {cancelable: false},
+        );
+      }
+      console.log('guguygy', error);
+    }
   };
   getPictures = async () => {
     try {
@@ -52,23 +83,35 @@ export default class Gallery extends Component {
         RNFS.readDir(dirPicutures)
           .then(res => {
             let images = [...res];
-            for (let i = 0; i < res.length; i++) {
-              images[i].uploaded = 'no';
-              // GDrive.files
-              //   .getId(images[i].path, 'root', 'image/jpeg', false)
-              //   .then(res => {
-              //     if (res) {
-              //       images[i].uploaded = 'yes';
-              //     } else {
-              //       images[i].uploaded = 'no';
-              //     }
-              //   })
-              //   .catch(err => console.log(err));
+            if (this.state.isConnected) {
+              for (let i = 0; i < res.length; i++) {
+                images[i].uploaded = 'uploading';
+              }
+              this.setState({images: images});
+              for (let i = 0; i < res.length; i++) {
+                GDrive.files
+                  .getId(images[i].name, [this.state.folderId], 'image/jpeg')
+                  .then(res => {
+                    if (res) {
+                      console.log(res);
+                      images[i].uploaded = 'yes';
+                      this.setState({images: images});
+                    } else {
+                      images[i].uploaded = 'no';
+                      this.setState({images: images});
+                    }
+                  })
+                  .catch(err => {
+                    images[i].uploaded = 'no';
+                    console.log(err);
+                  });
+              }
+            } else {
+              for (let i = 0; i < res.length; i++) {
+                images[i].uploaded = 'no';
+              }
+              this.setState({images: images});
             }
-            console.log('gallery mages', images);
-            this.setState({
-              images: images,
-            });
           })
           .catch(error => {
             console.log('error', error);
@@ -81,16 +124,22 @@ export default class Gallery extends Component {
     }
   };
   sync = () => {
-    let images = [...this.state.images];
-    if (images.length > 0) {
-      for (let i = 0; i < images.length; i++) {
-        images[i].uploaded = 'uploading';
-        this.setState({images: images});
-        RNFS.readFile('file://' + images[i].path, 'base64')
-          .then(res => {
-            this.upload(res, images[i].name, images, i);
-          })
-          .catch(error => console.log(error));
+    if (!this.state.isConnected) {
+      Toast.show('No Internet connection');
+    } else {
+      let images = [...this.state.images];
+      if (images.length > 0) {
+        for (let i = 0; i < images.length; i++) {
+          if (images[i].uploaded === 'no') {
+            images[i].uploaded = 'uploading';
+            this.setState({images: images});
+            RNFS.readFile('file://' + images[i].path, 'base64')
+              .then(res => {
+                this.upload(res, images[i].name, images, i);
+              })
+              .catch(error => console.log(error));
+          }
+        }
       }
     }
   };
@@ -100,7 +149,7 @@ export default class Gallery extends Component {
         image,
         'image/jpg',
         {
-          parents: ['root'],
+          parents: ['1bzY0cl1BVWQSSdo8feB7KqhsiG6sn5sG'],
           name: name,
         },
         true,
@@ -108,28 +157,29 @@ export default class Gallery extends Component {
       .then(res => {
         if (res.status == 200) {
           images[i].uploaded = 'yes';
-          this.setState({images: images}, console.log(this.state.images));
+          this.setState({images: images});
           console.log('upload success', res);
-        } else {
+        } else if (res.status == 401) {
+          console.log('upload fail', res);
           Alert.alert(
             'Token Expired',
-            'Your access token has expired. Please press OK to login again',
-            [{text: 'OK', onPress: () => this.navigateToLogin}],
+            'Your access token has expired. Press OK to login again',
+            [{text: 'OK', onPress: this.navigateToLogin}],
             {cancelable: false},
           );
         }
       })
       .catch(error => {
         images[i].uploaded = 'no';
-        this.setState({images: images}, console.log(this.state.images));
+        this.setState({images: images});
         console.log('upload error', error);
       });
   };
   navigateToLogin = () => {
+    console.log(this.props.navigation);
     AsyncStorage.clear(() => this.props.navigation.navigate('SignIn'));
   };
   render() {
-    console.log('state imag', this.state.images);
     return (
       <SafeAreaView style={{flex: 1}}>
         <View style={styles.container}>
